@@ -1,0 +1,20 @@
+{
+  "id": "./",
+  "name": "Digitalni novčanik",
+  "short_name": "Novčanik",
+  "description": "Jednostavna evidencija novca",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7f5",
+  "theme_color": "#063b2e",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
