@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#173b32">
+  <meta name="description" content="Jednostavan digitalni novčanik s lokalno spremljenom evidencijom.">
+  <link rel="manifest" href="manifest.json">
+  <title>Digitalni novčanik</title>
+  <style>
+    :root { color-scheme: light; --green:#173b32; --green2:#245748; --bg:#f3f6f4; --card:#fff; --text:#17211d; --muted:#66736d; --line:#e0e7e3; --red:#b43b3b; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { width:min(100%,560px); margin:0 auto; padding:20px 16px calc(28px + env(safe-area-inset-bottom)); }
+    header { text-align:center; padding:10px 0 18px; }
+    h1 { margin:0; font-size:1.35rem; letter-spacing:.04em; color:var(--green); }
+    .sub { margin:5px 0 0; color:var(--muted); font-size:.9rem; }
+    .balance-card { background:linear-gradient(135deg,var(--green),var(--green2)); color:white; border-radius:20px; padding:24px 20px; text-align:center; box-shadow:0 8px 22px #173b321c; }
+    .balance-label { font-size:.82rem; letter-spacing:.12em; opacity:.82; }
+    #balance { font-size:clamp(2rem,9vw,2.8rem); font-weight:750; margin-top:8px; overflow-wrap:anywhere; }
+    .card { background:var(--card); margin-top:16px; padding:18px; border:1px solid var(--line); border-radius:18px; box-shadow:0 3px 12px #17211d08; }
+    label { display:block; font-size:.92rem; font-weight:650; margin:0 0 7px; }
+    input { display:block; width:100%; min-height:48px; border:1px solid #cbd6d0; border-radius:11px; padding:11px 12px; font:inherit; background:white; color:var(--text); }
+    input:focus { outline:3px solid #24574825; border-color:var(--green2); }
+    .field { margin-bottom:15px; }
+    .two { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .hint { font-size:.78rem; color:var(--muted); margin-top:6px; }
+    button { border:0; border-radius:12px; min-height:48px; padding:12px 16px; font:inherit; font-weight:700; cursor:pointer; touch-action:manipulation; }
+    .primary { width:100%; background:var(--green); color:white; }
+    .secondary { width:100%; background:#e4ede8; color:var(--green); }
+    .danger { background:#fff0f0; color:var(--red); }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+    .message { min-height:1.25em; margin:10px 2px 0; font-size:.88rem; color:var(--green); }
+    .history { display:none; }
+    .history.open { display:block; }
+    .history-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+    h2 { font-size:1.08rem; margin:0; }
+    .table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:12px; }
+    table { width:100%; border-collapse:collapse; font-size:.85rem; }
+    th,td { padding:10px 9px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { background:#f4f7f5; color:#4e5e56; font-size:.75rem; }
+    tbody tr:last-child td { border-bottom:0; }
+    td.amount { white-space:nowrap; text-align:right; font-weight:700; }
+    .plus { color:#24714d; } .minus { color:var(--red); }
+    .note-cell { min-width:110px; overflow-wrap:anywhere; }
+    .empty { color:var(--muted); font-size:.9rem; text-align:center; padding:18px 8px; }
+    .foot { color:var(--muted); font-size:.76rem; text-align:center; margin:18px 8px 0; line-height:1.5; }
+    .small-btn { min-height:38px; padding:8px 10px; font-size:.82rem; }
+    .delete-one { min-height:32px; padding:6px 8px; font-size:.76rem; }
+    @media (max-width:380px) { main { padding-left:11px; padding-right:11px; } .card { padding:14px; } .two { gap:8px; } th,td { padding:9px 7px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>DIGITALNI NOVČANIK</h1>
+    <p class="sub">Jednostavna evidencija novca</p>
+  </header>
+
+  <section class="balance-card" aria-live="polite">
+    <div class="balance-label">TRENUTAČNI BALANS</div>
+    <div id="balance">0,00&nbsp;€</div>
+  </section>
+
+  <section class="card" aria-label="Nova transakcija">
+    <form id="transactionForm">
+      <div class="two">
+        <div class="field">
+          <label for="addAmount">Dodaj iznos (€)</label>
+          <input id="addAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0,00">
+        </div>
+        <div class="field">
+          <label for="subtractAmount">Oduzmi iznos (€)</label>
+          <input id="subtractAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0,00">
+        </div>
+      </div>
+      <div class="field">
+        <label for="addNote">Bilješka za dodani iznos (nije obavezna)</label>
+        <input id="addNote" type="text" maxlength="180" autocomplete="off" placeholder="Npr. plaća, poklon...">
+      </div>
+      <div class="field">
+        <label for="subtractNote">Bilješka za oduzeti iznos (nije obavezna)</label>
+        <input id="subtractNote" type="text" maxlength="180" autocomplete="off" placeholder="Npr. namirnice, račun...">
+      </div>
+      <button class="primary" type="submit">SPREMI TRANSAKCIJU</button>
+      <p class="message" id="message" role="status"></p>
+    </form>
+  </section>
+
+  <div class="actions">
+    <button class="secondary" id="toggleHistory" type="button" aria-expanded="false">EVIDENCIJA</button>
+    <button class="secondary" id="exportCsv" type="button">IZVEZI CSV</button>
+  </div>
+
+  <section class="card history" id="history" aria-label="Evidencija transakcija">
+    <div class="history-head">
+      <h2>Evidencija transakcija</h2>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="danger small-btn" id="clearHistory" type="button">Obriši sve</button>
+      </div>
+    </div>
+    <div id="tableArea"></div>
+  </section>
+
+  <p class="foot">Podaci se automatski spremaju u ovom pregledniku na ovom uređaju. Za sigurnost možeš povremeno izvesti CSV kopiju evidencije.</p>
+</main>
+<script>
+(() => {
+  "use strict";
+  const STORAGE_KEY = "digitalniNovcanik_v1";
+  const $ = id => document.getElementById(id);
+  let state = { balanceCents: 0, transactions: [] };
+
+  function euro(cents) {
+    return new Intl.NumberFormat("hr-HR", { style:"currency", currency:"EUR" }).format(cents / 100);
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Number.isInteger(parsed.balanceCents) && Array.isArray(parsed.transactions)) state = parsed;
+      }
+    } catch (e) {
+      $("message").textContent = "Spremanje nije dostupno u ovom pregledniku.";
+    }
+    render();
+  }
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      return true;
+    } catch (e) {
+      $("message").textContent = "Nije moguće spremiti podatke. Provjeri postavke preglednika.";
+      return false;
+    }
+  }
+  function render() {
+    $("balance").textContent = euro(state.balanceCents);
+    const area = $("tableArea");
+    if (!state.transactions.length) {
+      area.innerHTML = '<div class="empty">Još nema zabilježenih transakcija.</div>';
+      return;
+    }
+    const rows = [...state.transactions].reverse().map(t => {
+      const amountClass = t.type === "add" ? "plus" : "minus";
+      const sign = t.type === "add" ? "+" : "−";
+      return `<tr>
+        <td>${escapeHtml(t.date)}</td>
+        
+        <td class="amount ${amountClass}">${sign}${euro(t.amountCents)}</td>
+        <td class="note-cell">${escapeHtml(t.note || "—")}</td>
+        <td class="amount">${euro(t.balanceAfterCents)}</td>
+        <td><button class="danger small-btn delete-one" type="button" data-id="${escapeHtml(t.id)}">Obriši</button></td>
+      </tr>`;
+    }).join("");
+    area.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Datum i vrijeme</th><th style="text-align:right">Iznos</th><th>Bilješka</th><th style="text-align:right">Balans nakon</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+  function formatDate(date) {
+    return new Intl.DateTimeFormat("hr-HR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }).format(date);
+  }
+  $("addAmount").addEventListener("input", () => { if ($("addAmount").value) $("subtractAmount").value = ""; });
+  $("subtractAmount").addEventListener("input", () => { if ($("subtractAmount").value) $("addAmount").value = ""; });
+
+  $("transactionForm").addEventListener("submit", event => {
+    event.preventDefault();
+    const addRaw = $("addAmount").value.trim();
+    const subtractRaw = $("subtractAmount").value.trim();
+    const add = addRaw !== "" ? Math.round(Number(addRaw) * 100) : 0;
+    const subtract = subtractRaw !== "" ? Math.round(Number(subtractRaw) * 100) : 0;
+    if ((add > 0) === (subtract > 0)) {
+      $("message").textContent = "Upiši iznos samo u jedno polje: Dodaj ili Oduzmi.";
+      return;
+    }
+    const amountCents = add > 0 ? add : subtract;
+    if (!Number.isSafeInteger(amountCents) || amountCents <= 0) {
+      $("message").textContent = "Upiši valjan iznos veći od nule.";
+      return;
+    }
+    const type = add > 0 ? "add" : "subtract";
+    const newBalance = state.balanceCents + (type === "add" ? amountCents : -amountCents);
+    const transaction = {
+      id: (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random(),
+      date: formatDate(new Date()),
+      type,
+      amountCents,
+      note: (type === "add" ? $("addNote").value : $("subtractNote").value).trim(),
+      balanceAfterCents: newBalance
+    };
+    state.balanceCents = newBalance;
+    state.transactions.push(transaction);
+    if (!save()) {
+      state.balanceCents -= (type === "add" ? amountCents : -amountCents);
+      state.transactions.pop();
+      render();
+      return;
+    }
+    $("addAmount").value = "";
+    $("subtractAmount").value = "";
+    $("addNote").value = "";
+    $("subtractNote").value = "";
+    $("message").textContent = "Transakcija je spremljena.";
+    render();
+  });
+
+  $("toggleHistory").addEventListener("click", () => {
+    const open = $("history").classList.toggle("open");
+    $("toggleHistory").setAttribute("aria-expanded", String(open));
+    $("toggleHistory").textContent = open ? "SAKRIJ EVIDENCIJU" : "EVIDENCIJA";
+  });
+
+  function recalculateBalances() {
+    let balance = 0;
+    state.transactions.forEach(t => {
+      balance += t.type === "add" ? t.amountCents : -t.amountCents;
+      t.balanceAfterCents = balance;
+    });
+    state.balanceCents = balance;
+  }
+
+  $("tableArea").addEventListener("click", event => {
+    const button = event.target.closest(".delete-one");
+    if (!button) return;
+    const index = state.transactions.findIndex(t => String(t.id) === button.dataset.id);
+    if (index < 0) return;
+    const item = state.transactions[index];
+    if (!confirm(`Obrisati odabrani unos (${item.date}, ${item.type === "add" ? "+" : "−"}${euro(item.amountCents)})?`)) return;
+    state.transactions.splice(index, 1);
+    recalculateBalances();
+    if (save()) {
+      $("message").textContent = "Odabrani unos je obrisan.";
+      render();
+    }
+  });
+
+  $("clearHistory").addEventListener("click", () => {
+    if (!confirm("Želiš li obrisati cijelu evidenciju i vratiti balans na 0,00 €? Ova radnja se ne može poništiti.")) return;
+    state = { balanceCents: 0, transactions: [] };
+    if (save()) {
+      $("message").textContent = "Evidencija je obrisana.";
+      render();
+    }
+  });
+
+  $("exportCsv").addEventListener("click", () => {
+    const header = ["Datum i vrijeme","Vrsta","Iznos (EUR)","Bilješka","Balans nakon (EUR)"];
+    const rows = state.transactions.map(t => [t.date, t.type === "add" ? "Dodano" : "Oduzeto", (t.amountCents/100).toFixed(2), t.note, (t.balanceAfterCents/100).toFixed(2)]);
+    const csv = [header, ...rows].map(row => row.map(v => `"${String(v).replace(/"/g,'""')}"`).join(";")).join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "evidencija-novcanika.csv"; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  });
+
+  load();
+
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>
