@@ -36,7 +36,7 @@ jobs:
         run: npm run build:web
 
       - name: Generate Android project
-        run: npx cap add android
+        run: rm -rf android && npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync android
