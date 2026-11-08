@@ -94,6 +94,16 @@
     <button class="secondary" id="exportCsv" type="button">IZVEZI CSV</button>
   </div>
 
+  <section class="card" aria-label="Sigurnosna kopija">
+    <h2>Sigurnosna kopija</h2>
+    <p class="hint">Spremi cijeli novčanik, uključujući balans i sve transakcije. JSON datoteku čuvaj na sigurnom mjestu.</p>
+    <div class="actions">
+      <button class="secondary" id="exportBackup" type="button">IZVEZI KOPIJU</button>
+      <button class="secondary" id="importBackup" type="button">VRATI KOPIJU</button>
+    </div>
+    <input id="backupFile" type="file" accept="application/json,.json" hidden>
+  </section>
+
   <section class="card history" id="history" aria-label="Evidencija transakcija">
     <div class="history-head">
       <h2>Evidencija transakcija</h2>
@@ -104,7 +114,7 @@
     <div id="tableArea"></div>
   </section>
 
-  <p class="foot">Podaci se automatski spremaju u ovom pregledniku na ovom uređaju. Za sigurnost možeš povremeno izvesti CSV kopiju evidencije.</p>
+  <p class="foot">Podaci se automatski spremaju na ovom uređaju. Redovito izvezi JSON sigurnosnu kopiju. Deinstalacija aplikacije ili brisanje njezinih podataka može izbrisati lokalnu evidenciju.</p>
 </main>
 <script>
 (() => {
@@ -246,6 +256,75 @@
     if (save()) {
       $("message").textContent = "Evidencija je obrisana.";
       render();
+    }
+  });
+
+  function downloadFile(filename, content, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  $("exportBackup").addEventListener("click", () => {
+    const backup = {
+      format: "digitalni-novcanik-backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      state
+    };
+    downloadFile(
+      "digitalni-novcanik-sigurnosna-kopija.json",
+      JSON.stringify(backup, null, 2),
+      "application/json;charset=utf-8"
+    );
+    $("message").textContent = "Sigurnosna kopija je izvezena.";
+  });
+
+  $("importBackup").addEventListener("click", () => $("backupFile").click());
+
+  $("backupFile").addEventListener("change", async event => {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      const backup = JSON.parse(await file.text());
+      const candidate = backup && backup.format === "digitalni-novcanik-backup" &&
+        backup.version === 1 ? backup.state : null;
+
+      const validTransactions = candidate && Array.isArray(candidate.transactions) &&
+        candidate.transactions.every(t =>
+          t && (t.type === "add" || t.type === "subtract") &&
+          Number.isSafeInteger(t.amountCents) && t.amountCents > 0 &&
+          Number.isSafeInteger(t.balanceAfterCents) &&
+          typeof t.id === "string" && typeof t.date === "string" &&
+          typeof t.note === "string"
+        );
+
+      if (!candidate || !Number.isSafeInteger(candidate.balanceCents) || !validTransactions) {
+        throw new Error("Neispravna sigurnosna kopija.");
+      }
+
+      const previous = state;
+      state = {
+        balanceCents: candidate.balanceCents,
+        transactions: candidate.transactions
+      };
+
+      if (!save()) {
+        state = previous;
+        render();
+        throw new Error("Kopiju nije bilo moguće spremiti.");
+      }
+
+      render();
+      $("message").textContent = "Sigurnosna kopija je uspješno vraćena.";
+    } catch (error) {
+      $("message").textContent = error.message || "Datoteku nije moguće učitati.";
     }
   });
 
