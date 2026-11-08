@@ -1,0 +1,11 @@
+{
+  "appId": "hr.blaz001.digitalninovcanik",
+  "appName": "Digitalni novčanik",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
