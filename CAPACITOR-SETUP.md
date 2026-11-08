@@ -1,0 +1,1 @@
+Capacitor setup marker. The build workflow copies the PWA icons into www/android before generating the native Android project, so the source icon directory does not conflict with Capacitor's generated android/ project.
