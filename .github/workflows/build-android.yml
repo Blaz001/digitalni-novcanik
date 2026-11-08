@@ -10,8 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Check out Android app source
         uses: actions/checkout@v4
+        with:
+          ref: capacitor-android-app
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
